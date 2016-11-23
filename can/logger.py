@@ -78,7 +78,8 @@ def main():
         config["bitrate"] = results.bitrate
     bus = can.interface.Bus(results.channel, **config)
     print('Can Logger (Started on {})\n'.format(datetime.datetime.now()))
-    logger = Logger(results.log_file)
+    #logger = can.Logger(results.log_file)
+    notifier = can.Notifier(bus, [print], timeout=0.1)
 
     try:
         while True:
