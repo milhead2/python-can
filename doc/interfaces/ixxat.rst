@@ -15,15 +15,33 @@ Interface to `IXXAT <http://www.ixxat.com/>`__ Virtual CAN Interface V3 SDK. Wor
 Bus
 ---
 
-.. autoclass:: can.interfaces.ixxat.Bus
+.. autoclass:: can.interfaces.ixxat.IXXATBus
 
-.. autoclass:: can.interfaces.ixxat.canlib.IXXATBus
+
+
+Configuration file
+------------------
+The simplest configuration file would be::
+
+    [default]
+    interface = ixxat
+    channel = 0
+
+Python-can will search for the first IXXAT device available and open the first channel.
+``interface`` and ``channel`` parameters are interpreted by frontend ``can.interfaces.interface``
+module, while the following parameters are optional and are interpreted by IXXAT implementation.
+
+* ``bitrate`` (default 500000) Channel bitrate
+* ``UniqueHardwareId`` (default first device) Unique hardware ID of the IXXAT device
+* ``rxFifoSize`` (default 16) Number of RX mailboxes
+* ``txFifoSize`` (default 16) Number of TX mailboxes
+* ``extended`` (default False) Allow usage of extended IDs
 
 
 Internals
 ---------
 
-The IXXAT :class:`~can.Bus` object is a farly straightforward interface
+The IXXAT :class:`~can.BusABC` object is a farly straightforward interface
 to the IXXAT VCI library. It can open a specific device ID or use the
 first one found.
 

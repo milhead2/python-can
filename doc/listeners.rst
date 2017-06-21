@@ -30,6 +30,9 @@ BufferedReader
 Logger
 ------
 
+The :class:`can.Logger` uses the following :class:`can.Listener` types to
+create *.asc*, *.csv* and *.db* files with the messages received.
+
 .. autoclass:: can.Logger
     :members:
 
@@ -41,14 +44,15 @@ Printer
     :members:
 
 
-
-CSVWriter & SqliteWriter
-------------------------
-
-These Listeners simply create csv and sql files with the messages received.
+CSVWriter
+---------
 
 .. autoclass:: can.CSVWriter
     :members:
+
+
+SqliteWriter
+------------
 
 .. autoclass:: can.SqliteWriter
     :members:
@@ -64,4 +68,19 @@ engineered from existing log files. One description of the format can be found `
 <http://zone.ni.com/reference/en-XX/help/370859J-01/dlgcanconverter/dlgcanconverter/canconverter_ascii_logfiles/>`_.
 
 .. autoclass:: can.ASCWriter
+    :members:
+
+
+BLF (Binary Logging Format)
+---------------------------
+
+Implements support for BLF (Binary Logging Format) which is a proprietary
+CAN log format from Vector Informatik GmbH.
+
+The data is stored in a compressed format which makes it very compact.
+
+.. autoclass:: can.BLFWriter
+    :members:
+
+.. autoclass:: can.BLFReader
     :members:

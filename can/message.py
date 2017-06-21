@@ -20,17 +20,17 @@ class Message(object):
         self.is_error_frame = is_error_frame
         self.arbitration_id = arbitration_id
 
-        #if isinstance(data, list):
-        #    data = bytes(data)
-
         if data is None:
             self.data = bytearray()
             self.dlc = 0
+        elif isinstance(data, bytearray):
+            self.data = data
         else:
             try:
                 self.data = bytearray(data)
             except TypeError:
-                logger.error("Couldn't create message from %r (%r)", data, type(data))
+                err = "Couldn't create message from {} ({})".format(data, type(data))
+                raise TypeError(err)
 
         if dlc is None:
             self.dlc = len(self.data)
@@ -66,7 +66,7 @@ class Message(object):
         field_strings.append("DLC: {0:d}".format(self.dlc))
         data_strings = []
         if self.data is not None:
-            for index in range(0, self.dlc):
+            for index in range(0, min(self.dlc, len(self.data))):
                 data_strings.append("{0:02x}".format(self.data[index]))
         if len(data_strings) > 0:
             field_strings.append(" ".join(data_strings).ljust(24, " "))
@@ -96,7 +96,8 @@ class Message(object):
         return "can.Message({})".format(", ".join(args))
 
     def __eq__(self, other):
-        return (self.arbitration_id == other.arbitration_id and
+        return (isinstance(other, self.__class__) and
+                self.arbitration_id == other.arbitration_id and
                 #self.timestamp == other.timestamp and
                 self.id_type == other.id_type and
                 self.dlc == other.dlc and

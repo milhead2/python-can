@@ -1,16 +1,18 @@
 from __future__ import print_function
-import sys
+
 import ctypes
+import threading
 import logging
 import select
-
+import sys
 from ctypes.util import find_library
 
 import can
-from can.interfaces.socketcan_constants import *  # CAN_RAW
+from can.broadcastmanager import CyclicSendTaskABC, RestartableCyclicTaskABC, ModifiableCyclicTaskABC
 from can.bus import BusABC
 from can.message import Message
-from can.broadcastmanager import CyclicSendTaskABC, MultiRateCyclicSendTaskABC
+from can.interfaces.socketcan.socketcan_constants import *  # CAN_RAW
+from can.interfaces.socketcan.socketcan_common import * # parseCanFilters
 
 # Set up logging
 log = logging.getLogger('can.socketcan.ctypes')
@@ -38,7 +40,7 @@ class SocketcanCtypes_Bus(BusABC):
     channel_info = "ctypes socketcan channel"
 
     def __init__(self,
-                 channel=can.rc['channel'],
+                 channel='vcan0',
                  receive_own_messages=False,
                  *args, **kwargs):
         """
@@ -48,14 +50,48 @@ class SocketcanCtypes_Bus(BusABC):
         """
 
         self.socket = createSocket()
+        self.channel = channel
 
         log.debug("Result of createSocket was %d", self.socket)
+
+        # Add any socket options such as can frame filters
+        if 'can_filters' in kwargs and len(kwargs['can_filters']) > 0:
+            log.debug("Creating a filtered can bus")
+            self.set_filters(kwargs['can_filters'])
+
         error = bindSocket(self.socket, channel)
+        if error < 0:
+            m = u'bindSocket failed for channel {} with error {}'.format(
+                    channel, error)
+            raise can.CanError(m)
 
         if receive_own_messages:
             error1 = recv_own_msgs(self.socket)
 
         super(SocketcanCtypes_Bus, self).__init__(*args, **kwargs)
+
+    def set_filters(self, can_filters=None):
+        """Apply filtering to all messages received by this Bus.
+
+        Calling without passing any filters will reset the applied filters.
+
+        :param list can_filters:
+            A list of dictionaries each containing a "can_id" and a "can_mask".
+
+            >>> [{"can_id": 0x11, "can_mask": 0x21}]
+
+            A filter matches, when ``<received_can_id> & can_mask == can_id & can_mask``
+
+        """
+        filter_struct = pack_filters(can_filters)
+        res = libc.setsockopt(self.socket,
+                              SOL_CAN_RAW,
+                              CAN_RAW_FILTER,
+                              filter_struct, len(filter_struct)
+                             )
+        # TODO Is this serious enough to raise a CanError exception?
+        if res != 0:
+            log.error('Setting filters failed: ' + str(res))
 
     def recv(self, timeout=None):
 
@@ -87,8 +123,22 @@ class SocketcanCtypes_Bus(BusABC):
 
         return rx_msg
 
-    def send(self, msg):
-        return sendPacket(self.socket, msg)
+    def send(self, msg, timeout=None):
+        frame = _build_can_frame(msg)
+        bytes_sent = libc.write(self.socket, ctypes.byref(frame), ctypes.sizeof(frame))
+        if bytes_sent == -1:
+            logging.debug("Error sending frame :-/")
+            raise can.CanError("can.socketcan.ctypes failed to transmit")
+
+        logging.debug("Frame transmitted with %s bytes", bytes_sent)
+
+    def send_periodic(self, msg, period, duration=None):
+        task = CyclicSendTask(self.channel, msg, period)
+
+        if duration is not None:
+            threading.Timer(duration, task.stop).start()
+
+        return task
 
 
 class SOCKADDR(ctypes.Structure):
@@ -211,7 +261,10 @@ def bindSocket(socketID, channel_name):
     ifr.ifr_name = channel_name.encode('ascii')
     log.debug('calling ioctl SIOCGIFINDEX')
     # ifr.ifr_ifindex gets filled with that device's index
-    libc.ioctl(socketID, SIOCGIFINDEX, ctypes.byref(ifr))
+    ret = libc.ioctl(socketID, SIOCGIFINDEX, ctypes.byref(ifr))
+    if ret < 0:
+        m = u'Failure while getting "{}" interface index.'.format(channel_name)
+        raise can.CanError(m)
     log.info('ifr.ifr_ifindex: %d', ifr.ifr_ifindex)
 
     # select the CAN interface and bind the socket to it
@@ -296,15 +349,6 @@ def _build_can_frame(message):
     return frame
 
 
-def sendPacket(socket, message):
-    frame = _build_can_frame(message)
-    bytes_sent = libc.write(socket, ctypes.byref(frame), ctypes.sizeof(frame))
-    if bytes_sent == -1:
-        logging.debug("Error sending frame :-/")
-
-    return bytes_sent
-
-
 def capturePacket(socketID):
     """
     Captures a packet of data from the given socket.
@@ -364,7 +408,6 @@ def _create_bcm_frame(opcode, flags, count, ival1_seconds, ival1_usec, ival2_sec
 
 
 class SocketCanCtypesBCMBase(object):
-
     """Mixin to add a BCM socket"""
 
     def __init__(self, channel, *args, **kwargs):
@@ -374,10 +417,10 @@ class SocketCanCtypesBCMBase(object):
         log.debug("Created bcm socket (un-connected fd=%d)", self.bcm_socket)
         connectSocket(self.bcm_socket, channel)
         log.debug("Connected bcm socket")
-        super(SocketCanCtypesBCMBase, self).__init__(channel, *args, **kwargs)
+        super(SocketCanCtypesBCMBase, self).__init__(*args, **kwargs)
 
 
-class CyclicSendTask(SocketCanCtypesBCMBase, CyclicSendTaskABC):
+class CyclicSendTask(SocketCanCtypesBCMBase, RestartableCyclicTaskABC, ModifiableCyclicTaskABC):
 
     def __init__(self, channel, message, period):
         """
