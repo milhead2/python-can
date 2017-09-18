@@ -45,3 +45,4 @@ class Notifier(object):
         finally:
             for listener in self.listeners:
                 listener.stop()
+
