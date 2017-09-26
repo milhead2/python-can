@@ -16,6 +16,10 @@ python-can
    :alt: CI Server
 
 
+= NOTE: I was using this fork of hardbyte/python-can as a base of python-j1939 but it's no longer needed.  
+the python-j1939 requires only the develop branch of hardbyte/python-can
+
+
 The **C**\ ontroller **A**\ rea **N**\ etwork is a bus standard designed
 to allow microcontrollers and devices to communicate with each other. It
 has priority based bus arbitration, reliable deterministic
