@@ -3,7 +3,7 @@ python-can
 
 
 *NOTE*: I was using this fork of hardbyte/python-can as a base of python-j1939 but it's no longer needed.  
-the python-j1939 requires only the develop branch of hardbyte/python-can
+the python-j1939 requires only the develop branch of hardbyte/python-can.  No not use this repo for any future development, instead go to the source at hardbyte/python-can.
 
 
 The **C**\ ontroller **A**\ rea **N**\ etwork is a bus standard designed
