@@ -1,22 +1,8 @@
 python-can
 ==========
 
-|release| |docs| |build|
 
-.. |release| image:: https://img.shields.io/pypi/v/python-can.svg
-   :target: https://pypi.python.org/pypi/python-can/
-   :alt: Latest Version
-
-.. |docs| image:: https://readthedocs.org/projects/python-can/badge/?version=stable
-   :target: https://python-can.readthedocs.io/en/stable/
-   :alt: Documentation Status
-                
-.. |build| image:: https://travis-ci.org/hardbyte/python-can.svg?branch=master
-   :target: https://travis-ci.org/hardbyte/python-can
-   :alt: CI Server
-
-
-= NOTE: I was using this fork of hardbyte/python-can as a base of python-j1939 but it's no longer needed.  
+*NOTE*: I was using this fork of hardbyte/python-can as a base of python-j1939 but it's no longer needed.  
 the python-j1939 requires only the develop branch of hardbyte/python-can
 
 
